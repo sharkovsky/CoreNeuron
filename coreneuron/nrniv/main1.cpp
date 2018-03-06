@@ -51,6 +51,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "coreneuron/nrniv/partrans.h"
 #include "coreneuron/nrniv/multisend.h"
 #include "coreneuron/utils/file_utils.h"
+#include "coreneuron/nrniv/dryrun.h"
 #include <string.h>
 
 #if 0
@@ -257,7 +258,8 @@ int main1(int argc, char** argv, char** env) {
     nrnmpi_barrier();
 #endif
     bool compute_gpu = nrnopt_get_flag("-gpu");
-
+    bool dryrun    = nrnopt_get_flag("--dryrun");
+    if (dryrun) return execute_dryrun();
 // clang-format off
     #pragma acc data copyin(celsius, secondorder) if (compute_gpu)
     // clang-format on

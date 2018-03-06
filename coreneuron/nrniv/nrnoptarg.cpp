@@ -98,6 +98,7 @@ static param_flag param_flag_args[] = {
     {"--show", "Print args."},
     {"--multisend", "Use Multisend spike exchange instead of Allgather."},
     {"--binqueue", "Use bin queue."},
+    {"--dryrun", "output execution time test for all existing mechanisms" },
     {NULL, NULL}};
 
 static param_str param_str_args[] = {

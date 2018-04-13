@@ -37,10 +37,10 @@ file(GLOB_RECURSE coreneuron_cuda_files "*.cu")
 # Compile and include MOD files
 
 # set mod2c binary and files from built in
-set (MOD2C ${PROJECT_BINARY_DIR}/external/mod2c/bin/mod2c_core)
-get_filename_component(mod2c_install_prefix ${MOD2C} DIRECTORY)
+set (MOD2C_BINARY ${PROJECT_BINARY_DIR}/external/mod2c/bin/mod2c_core)
+get_filename_component(mod2c_install_prefix ${MOD2C_BINARY} DIRECTORY)
 set (MOD2C_UNITS "${PROJECT_BINARY_DIR}/external/mod2c/share/nrnunits.lib")
-set(MOD2C env "MODLUNIT=${MOD2C_UNITS}" ${MOD2C})
+set(MOD2C env "MODLUNIT=${MOD2C_UNITS}" ${MOD2C_BINARY})
 # Macro sets up build rule for .c files from .mod files.
 # Parameters:
 #    name     An arbitrary name to keep track of output .c files
@@ -295,3 +295,6 @@ if(ENABLE_DEV_FILES_INSTALLATION)
                 DESTINATION share/mod
                 FILES_MATCHING PATTERN "*.mod")
 endif()
+
+install(FILES ${MOD2C_BINARY} DESTINATION ${BIN_INSTALL_DIR}/)
+install(FILES ${MOD2C_UNITS} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/)

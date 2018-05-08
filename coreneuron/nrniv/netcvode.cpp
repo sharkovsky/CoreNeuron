@@ -44,6 +44,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <openacc.h>
 #endif
 
+#include "likwid.h"
+
 #define PP2NT(pp) (nrn_threads + (pp)->_tid)
 #define PP2t(pp) (PP2NT(pp)->_t)
 #define POINT_RECEIVE(type, tar, w, f) (*pnt_receive[type])(tar, w, f)
@@ -149,6 +151,7 @@ void net_event(Point_process* pnt, double time) {
             ps->pr(buf, time, net_cvode_instance);
             hoc_execerror("net_event time < t", 0);
         }
+        //printf("From net_event ");
         ps->send(time, net_cvode_instance, nt);
     }
 }
@@ -181,6 +184,7 @@ void NetCvodeThreadData::interthread_send(double td, DiscreteEvent* db, NrnThrea
 }
 
 void NetCvodeThreadData::enqueue(NetCvode* nc, NrnThread* nt) {
+//    printf("inter_thread_events_.size() %d\n", inter_thread_events_.size());
     MUTLOCK
     for (size_t i = 0; i < inter_thread_events_.size(); ++i) {
         InterThreadEvent ite = inter_thread_events_[i];
@@ -196,7 +200,7 @@ void NetCvodeThreadData::enqueue(NetCvode* nc, NrnThread* nt) {
 
 NetCvode::NetCvode(void) {
     eps_ = 100. * DBL_EPSILON;
-    print_event_ = 0;
+    print_event_ = 1;
     pcnt_ = 0;
     p = nil;
     p_construct(1);
@@ -314,6 +318,7 @@ void NetCvode::init_events() {
     }
 }
 
+
 bool NetCvode::deliver_event(double til, NrnThread* nt) {
     TQItem* q;
     if ((q = p[nt->id].tqe_->atomic_dq(til)) != 0) {
@@ -328,13 +333,67 @@ bool NetCvode::deliver_event(double til, NrnThread* nt) {
         de->deliver(tt, this, nt);
 
         /// In case of a self event we need to delete the self event
-        if (de->type() == SelfEventType)
+        if (de->type() == SelfEventType) {
             delete (SelfEvent*)de;
+        } else {
+            if (de->type() == NetConType) {
+                //printf("NetConType delivered tt: %f\n", tt);
+            }
+        }
 
         return true;
     } else
         return false;
 }
+
+
+/*
+// FRANCESCO: copy of the above, but try to limit as much as possible the
+// overhead before a call to net_receive block of relevant point process
+bool NetCvode::deliver_event(double til, NrnThread* nt) {
+    TQItem* q;
+    std::vector< DiscreteEvent* > NetConEvents;
+    std::vector< double > NetConEvents_times;
+
+    q = p[nt->id].tqe_->atomic_dq(til);
+
+    while (q != 0) {
+        DiscreteEvent* de = (DiscreteEvent*)q->data_;
+        double tt = q->t_;
+        delete q;
+#if PRINT_EVENT
+        if (print_event_) {
+            de->pr("deliver", tt, this);
+        }
+#endif
+        if (de->type() == NetConType) {
+            printf("NetConType tt: %f\n", tt);
+            NetConEvents.push_back( de );
+            NetConEvents_times.push_back( tt );
+        } else {
+            de->deliver(tt, this, nt);
+            /// In case of a self event we need to delete the self event
+            if (de->type() == SelfEventType) {
+                delete (SelfEvent*)de;
+            }
+        }
+
+        if ( NetConEvents.size() > 0 ){
+            int event_idx;
+            LIKWID_MARKER_START( "NetCon::deliver_event" );
+            for( event_idx = 0; event_idx < NetConEvents.size(); ++event_idx ) {
+                NetConEvents[ event_idx ]->deliver( NetConEvents_times[event_idx], this, nt);
+            }
+            LIKWID_MARKER_STOP( "NetCon::deliver_event" );
+        }
+
+        q = p[nt->id].tqe_->atomic_dq(til);
+
+    }
+
+    return false;
+}
+*/
 
 void net_move(void** v, Point_process* pnt, double tt) {
     if (!(*v))
@@ -369,11 +428,18 @@ void NetCvode::move_event(TQItem* q, double tnew, NrnThread* nt) {
 void NetCvode::deliver_events(double til, NrnThread* nt) {
     // printf("deliver_events til %20.15g\n", til);
     /// Enqueue any outstanding events in the interthread event buffer
+    //printf("calling NetCvode::deliver_events til: %f\n", til);
+    //LIKWID_MARKER_START("enqueue_spikes");
     p[nt->id].enqueue(this, nt);
+    //LIKWID_MARKER_STOP("enqueue_spikes");
 
     /// Deliver events. When the map is used, the loop is explicit
+    int count = 0;
+    //LIKWID_MARKER_START("NetCvode::deliver_events");
     while (deliver_event(til, nt))
-        ;
+        ++count;
+    //LIKWID_MARKER_STOP("NetCvode::deliver_events");
+    //printf("Delivered %d events untile time %f\n", count, til);
 }
 
 DiscreteEvent::DiscreteEvent() {
@@ -476,17 +542,22 @@ void NetCon::send(double tt, NetCvode* ns, NrnThread* nt) {
 
 void NetCon::deliver(double tt, NetCvode* ns, NrnThread* nt) {
     (void)ns;
+
+#ifdef DEBUG
     nrn_assert(target_);
 
     if (PP2NT(target_) != nt)
         printf("NetCon::deliver nt=%d target=%d\n", nt->id, PP2NT(target_)->id);
 
     nrn_assert(PP2NT(target_) == nt);
+#endif
+
     int typ = target_->_type;
     nt->_t = tt;
 
-    // printf("NetCon::deliver t=%g tt=%g %s\n", t, tt, pnt_name(target_));
+    //printf("NetCon::deliver t=%g tt=%g %s\n", t, tt, pnt_name(target_));
     POINT_RECEIVE(typ, target_, u.weight_index_, 0);
+
 #ifdef DEBUG
     if (errno && nrn_errno_check(typ))
         hoc_warning("errno set during NetCon deliver to NET_RECEIVE", (char*)0);
@@ -501,16 +572,75 @@ void NetCon::pr(const char* s, double tt, NetCvode* ns) {
 
 void PreSyn::send(double tt, NetCvode* ns, NrnThread* nt) {
     record(tt);
+
+    /*
+     * ORIGINAL VERSION
+    int count = 0;
+   //printf("calling PreSyn::send tt: %f\n", tt);
+    LIKWID_MARKER_START("enqueue_spikes");
     for (int i = nc_cnt_ - 1; i >= 0; --i) {
         NetCon* d = netcon_in_presyn_order_[nc_index_ + i];
         if (d->active_ && d->target_) {
             NrnThread* n = PP2NT(d->target_);
+            ++count;
 
             if (nt == n)
                 ns->bin_event(tt + d->delay_, d, n);
             else
                 ns->p[n->id].interthread_send(tt + d->delay_, d, n);
         }
+    }
+    LIKWID_MARKER_STOP("enqueue_spikes");
+    printf("PreSyn %d counted %d spikes at time %f\n", gid_, count, tt);
+    */
+
+    std::vector<NetCon *> for_bin_event_NetCons;
+    std::vector<NrnThread *> for_bin_event_targets;
+    std::vector<NetCon *> for_interthread_NetCons;
+    std::vector<NrnThread *> for_interthread_targets;
+
+    for (int i = nc_cnt_ - 1; i >= 0; --i) {
+        NetCon* d = netcon_in_presyn_order_[nc_index_ + i];
+        if (d->active_ && d->target_) {
+            NrnThread* n = PP2NT(d->target_);
+            if (nt == n) {
+                for_bin_event_NetCons.push_back( d );
+                for_bin_event_targets.push_back( n );
+            }
+            else {
+                for_interthread_NetCons.push_back( d );
+                for_interthread_targets.push_back( n );
+            }
+        }
+    }
+
+    if ( for_bin_event_NetCons.size() > 0 ){
+        //printf("time: %f queueing %d bin events\n", tt, for_bin_event_NetCons.size());
+# ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_START("enqueue_spikes_bin_event");
+#endif
+        for( int j=0; j < for_bin_event_NetCons.size(); ++j ){
+            NetCon * d = for_bin_event_NetCons[j];
+            NrnThread* n = for_bin_event_targets[j];
+            ns->bin_event(tt + d->delay_, d, n);
+        }
+# ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_STOP("enqueue_spikes_bin_event");
+#endif
+    }
+
+    if ( for_interthread_NetCons.size() > 0 ){
+# ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_START("enqueue_spikes_interthread");
+#endif
+        for( int j=0; j < for_interthread_NetCons.size(); ++j ){
+            NetCon * d = for_interthread_NetCons[j];
+            NrnThread* n = for_interthread_targets[j];
+            ns->p[n->id].interthread_send(tt + d->delay_, d, n);
+        }
+# ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_STOP("enqueue_spikes_interthread");
+#endif
     }
 
 #if NRNMPI
@@ -716,6 +846,7 @@ void NetCvode::check_thresh(NrnThread* nt) {  // for default method
     // on CPU...
     for (i = 0; i < nt->_net_send_buffer_cnt; ++i) {
         PreSyn* ps = nt->presyns + nt->_net_send_buffer[i];
+        //printf("From check_thresh ");
         ps->send(nt->_t + teps, net_cvode_instance, nt);
     }
 
@@ -787,8 +918,10 @@ tryagain:
     // but I do not want to affect the case of not using a bin queue.
 
     if (nrn_use_bin_queue_) {
+        std::vector< DiscreteEvent* > BinQueueEvents;
         while ((q = p[tid].tqe_->dequeue_bin()) != 0) {
             DiscreteEvent* db = (DiscreteEvent*)q->data_;
+            BinQueueEvents.push_back( db );
 
 #if PRINT_EVENT
             if (print_event_) {
@@ -802,8 +935,18 @@ tryagain:
 #endif
 
             delete q;
-            db->deliver(nt->_t, this, nt);
+            //db->deliver(nt->_t, this, nt);
         }
+# pragma omp barrier
+        if ( BinQueueEvents.size() > 0 ) {
+            int event_idx;
+            LIKWID_MARKER_START("binq_delivery");
+            for( event_idx = 0; event_idx < BinQueueEvents.size(); ++event_idx ) {
+                BinQueueEvents[ event_idx ]->deliver(nt->_t, this, nt);
+            }
+            LIKWID_MARKER_STOP("binq_delivery");
+        }
+        //printf("\nbinq delivery at time %f delivered %d events\n", tsav, BinQueueEvents.size() );
         // assert(int(tm/nt->_dt)%1000 == p[tid].tqe_->nshift_);
     }
 
@@ -821,6 +964,7 @@ tryagain:
     /*before executing on gpu, we have to update the NetReceiveBuffer_t on GPU */
     update_net_receive_buffer(nt);
 
+    //printf("time %f calling net_buf_receive_ %d times\n", nt->_t, net_buf_receive_cnt_);
     for (int i = 0; i < net_buf_receive_cnt_; ++i) {
         (*net_buf_receive_[i])(nt);
     }

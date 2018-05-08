@@ -52,6 +52,8 @@ MPI_Comm nrn_bbs_comm;
 static MPI_Group grp_bbs;
 static MPI_Group grp_net;
 
+FILE * allgatherv_times_fp;
+
 extern void nrnmpi_spike_initialize();
 
 #define nrnmpidebugleak 0
@@ -126,9 +128,12 @@ void nrnmpi_init(int nrnmpi_under_nrncontrol, int* pargc, char*** pargv) {
     if (nrnmpi_myid == 0)
         printf(" num_mpi=%d\n num_omp_thread=%d\n\n", nrnmpi_numprocs_world,
                nrnomp_get_numthreads());
+
+    init_allgatherv_fp( );
 }
 
 void nrnmpi_finalize(void) {
+    close_allgatherv_fp();
     if (nrnmpi_under_nrncontrol_) {
         int flag = 0;
         MPI_Initialized(&flag);
@@ -207,3 +212,6 @@ void nrn_fatal_error(const char* msg) {
     }
     nrn_abort(-1);
 }
+
+void init_allgatherv_fp() { if (nrnmpi_myid==0) { allgatherv_times_fp = fopen( "allgatherv_times.dat" , "w" ); } }
+void close_allgatherv_fp() { if (allgatherv_times_fp && nrnmpi_myid==0) { fclose( allgatherv_times_fp ); } }

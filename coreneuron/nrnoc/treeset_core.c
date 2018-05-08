@@ -65,16 +65,19 @@ static void nrn_rhs(NrnThread* _nt) {
 
     nrn_ba(_nt, BEFORE_BREAKPOINT);
     /* note that CAP has no current */
-    for (tml = _nt->tml; tml; tml = tml->next)
+    for (tml = _nt->tml; tml; tml = tml->next) {
+#pragma omp barrier
         if (memb_func[tml->index].current) {
             mod_f_t s = memb_func[tml->index].current;
-            (*s)(_nt, tml->ml, tml->index);
+            //if(tml->index == 31)
+                (*s)(_nt, tml->ml, tml->index);
 #ifdef DEBUG
             if (errno) {
                 hoc_warning("errno set during calculation of currents", (char*)0);
             }
 #endif
         }
+    }
 
 /* now the internal axial currents.
 The extracellular mechanism contribution is already done.

@@ -29,6 +29,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef nrnmpi_h
 #define nrnmpi_h
 #include "coreneuron/nrnmpi/nrnmpiuse.h"
+#include <stdio.h>
 
 /* by default nrnmpi_numprocs_world = nrnmpi_numprocs = nrnmpi_numsubworlds and
    nrnmpi_myid_world = nrnmpi_myid and the bulletin board and network communication do
@@ -66,6 +67,11 @@ extern "C" {
 #endif
 
 extern int nrnmpi_use; /* NEURON does MPI init and terminate?*/
+
+extern FILE * allgatherv_times_fp;
+
+void init_allgatherv_fp();
+void close_allgatherv_fp();
 
 #if defined(__cplusplus)
 }

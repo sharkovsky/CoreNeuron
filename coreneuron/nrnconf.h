@@ -57,6 +57,7 @@ typedef char Symbol;
 extern "C" {
 #endif
 
+extern int start_counter;
 extern double celsius;
 extern double t, dt;
 extern int rev_dt;

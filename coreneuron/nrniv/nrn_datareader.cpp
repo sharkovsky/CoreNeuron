@@ -41,6 +41,7 @@ void data_reader::open(const char* filename, bool reorder) {
 
     close();
     F.open(filename);
+    printf("Reading: %s\n", filename);
 
     char version[256];
     F.getline(version, sizeof(version));

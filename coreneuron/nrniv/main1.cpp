@@ -37,6 +37,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "coreneuron/nrnoc/multicore.h"
 #include "coreneuron/nrnoc/nrnoc_decl.h"
 #include "coreneuron/nrnmpi/nrnmpi.h"
+#include "coreneuron/nrnomp/nrnomp.h"
 #include "coreneuron/nrniv/nrniv_decl.h"
 #include "coreneuron/nrniv/output_spikes.h"
 #include "coreneuron/utils/endianness.h"
@@ -52,6 +53,19 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <sstream>
 
+#ifdef LIKWID_PERFMON
+#include <likwid.h>
+#else
+#define LIKWID_MARKER_INIT
+#define LIKWID_MARKER_THREADINIT
+#define LIKWID_MARKER_SWITCH
+#define LIKWID_MARKER_REGISTER(regionTag)
+#define LIKWID_MARKER_START(regionTag)
+#define LIKWID_MARKER_STOP(regionTag)
+#define LIKWID_MARKER_CLOSE
+#define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
+#endif
+
 #if 0
 #include <fenv.h>
 #define NRN_FEEXCEPT (FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW)
@@ -61,6 +75,8 @@ int nrn_feenableexcept() {
   return result;
 }
 #endif
+
+int start_counter = 0;
 
 int main1(int argc, char* argv[], char** env);
 void call_prcellstate_for_prcellgid(int prcellgid, int compute_gpu, int is_init);
@@ -82,6 +98,8 @@ void nrn_init_and_load_data(int argc,
 #if NRNMPI
     nrnmpi_init(nrnmpi_under_nrncontrol ? 1 : 0, &argc, &argv);
 #endif
+
+    printf(" num_omp_thread=%d\n\n", nrnomp_get_numthreads());
 
     // memory footprint after mpi initialisation
     report_mem_usage("After MPI_Init");
@@ -259,9 +277,17 @@ void dump_nrn_threads_to_file() {
 int main1(int argc, char** argv, char** env) {
     (void)env; /* unused */
 
+    LIKWID_MARKER_INIT;
+
+#pragma omp parallel
+    {
+        LIKWID_MARKER_THREADINIT;
+    }
+
     // initializationa and loading functions moved to separate
     nrn_init_and_load_data(argc, argv);
     // nrnopt_get... still available until call nrnopt_delete()
+
 
     bool compute_gpu = nrnopt_get_flag("-gpu");
 // clang-format off
@@ -272,6 +298,7 @@ int main1(int argc, char** argv, char** env) {
         nrn_finitialize(v != 1000., v);
 
         report_mem_usage("After nrn_finitialize");
+        start_counter = 1 ;
 
 #ifdef ENABLE_REPORTING
         ReportGenerator* r = NULL;
@@ -345,6 +372,8 @@ int main1(int argc, char** argv, char** env) {
 #endif
 
     finalize_data_on_device();
+
+    LIKWID_MARKER_CLOSE;
 
     return 0;
 }

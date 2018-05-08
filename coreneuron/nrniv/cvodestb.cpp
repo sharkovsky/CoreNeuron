@@ -35,6 +35,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "coreneuron/nrniv/nrn_acc_manager.h"
 
+#include "likwid.h"
+
 extern "C" {
 
 // for fixed step thread

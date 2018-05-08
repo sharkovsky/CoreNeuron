@@ -29,6 +29,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "coreneuron/nrnconf.h"
 #include "coreneuron/nrnoc/multicore.h"
 #include "coreneuron/nrnoc/nrnoc_decl.h"
+#include "likwid.h"
 
 int use_solve_interleave;
 
@@ -36,12 +37,13 @@ static void triang(NrnThread *), bksub(NrnThread *);
 
 /* solve the matrix equation */
 void nrn_solve_minimal(NrnThread* _nt) {
-    if (use_solve_interleave) {
-        solve_interleaved(_nt->id);
-    } else {
+//    if (use_solve_interleave) {
+//        solve_interleaved(_nt->id);
+//    } else {
+#pragma omp barrier
         triang(_nt);
         bksub(_nt);
-    }
+//    }
 }
 
 /** TODO loops are executed seq in OpenACC just for debugging, remove it! */
@@ -63,14 +65,17 @@ static void triang(NrnThread* _nt) {
 #endif
 
 /** @todo: just for benchmarking, otherwise produces wrong results */
+#pragma omp barrier
 #pragma acc parallel loop seq present(                                                  \
     vec_a[0 : i3], vec_b[0 : i3], vec_d[0 : i3], vec_rhs[0 : i3], parent_index[0 : i3]) \
                                                      async(stream_id) if (_nt->compute_gpu)
+    LIKWID_MARKER_START("linalg");
     for (i = i3 - 1; i >= i2; --i) {
         p = vec_a[i] / vec_d[i];
         vec_d[parent_index[i]] -= p * vec_b[i];
         vec_rhs[parent_index[i]] -= p * vec_rhs[i];
     }
+    LIKWID_MARKER_STOP("linalg");
 }
 
 /* back substitution to finish solving the matrix equations */
@@ -90,9 +95,11 @@ static void bksub(NrnThread* _nt) {
 
 /** @todo: just for benchmarking, otherwise produces wrong results */
 // clang-format off
+#pragma omp barrier
     #pragma acc parallel loop seq present(      \
         vec_d[0:i2], vec_rhs[0:i2])             \
         async(stream_id) if (_nt->compute_gpu)
+    LIKWID_MARKER_START("linalg");
     // clang-format on
     for (i = i1; i < i2; ++i) {
         vec_rhs[i] /= vec_d[i];
@@ -108,6 +115,7 @@ static void bksub(NrnThread* _nt) {
         vec_rhs[i] -= vec_b[i] * vec_rhs[parent_index[i]];
         vec_rhs[i] /= vec_d[i];
     }
+    LIKWID_MARKER_STOP("linalg");
 
     #pragma acc wait(stream_id)
     // clang-format on

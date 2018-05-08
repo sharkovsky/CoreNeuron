@@ -1083,8 +1083,8 @@ void read_phase2(data_reader& F, int imult, NrnThread& nt) {
         }
 
         nt._ml_list[tml->index] = tml->ml;
-        // printf("index=%d nodecount=%d membfunc=%s\n", tml->index, tml->ml->nodecount,
-        // memb_func[tml->index].sym?memb_func[tml->index].sym:"None");
+         printf("index=%d nodecount=%d membfunc=%s\n", tml->index, tml->ml->nodecount,
+         memb_func[tml->index].sym?memb_func[tml->index].sym:"None");
         if (nt.tml) {
             tml_last->next = tml;
         } else {
@@ -1150,6 +1150,7 @@ void read_phase2(data_reader& F, int imult, NrnThread& nt) {
         offset += nrn_soa_padded_size(n, layout) * sz;
         unpadded_offset += n * sz;
         if (pnt_map[type] > 0) {
+            printf( "Point Process type: %d index: %d name: %s count: %d unpadded_size: %d padded_size %d\n",type, tml->index, nrn_get_mechname(tml->index), n, n * sz, nrn_soa_padded_size(n, layout) * sz);
             npnt += n;
         }
     }
@@ -1895,7 +1896,7 @@ size_t model_size(void) {
         nb_nt += nt._ndata * szd + nt._nidata * szi + nt._nvdata * szv;
         nb_nt += nt.end * szi;  // _v_parent_index
 
-#ifdef DEBUG
+//#ifdef DEBUG
         printf("ncell=%d end=%d nmech=%d\n", nt.ncell, nt.end, nmech);
         printf("ndata=%ld nidata=%ld nvdata=%ld\n", nt._ndata, nt._nidata, nt._nvdata);
         printf("nbyte so far %ld\n", nb_nt);
@@ -1905,34 +1906,34 @@ size_t model_size(void) {
         printf("n_pntproc=%d sz=%ld nbyte=%ld\n", nt.n_pntproc, sz_pp, nt.n_pntproc * sz_pp);
         printf("n_netcon=%d sz=%ld nbyte=%ld\n", nt.n_netcon, sz_nc, nt.n_netcon * sz_nc);
         printf("n_weight = %d\n", nt.n_weight);
-#endif
+//#endif
 
         // spike handling
         nb_nt += nt.n_pntproc * sz_pp + nt.n_netcon * sz_nc + nt.n_presyn * sz_ps +
                  nt.n_input_presyn * sz_psi + nt.n_weight * szd;
         nbyte += nb_nt;
-#ifdef DEBUG
+//#ifdef DEBUG
         printf("%d thread %d total bytes %ld\n", nrnmpi_myid, i, nb_nt);
-#endif
+//#endif
     }
 
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("%d netcon pointers %ld  nbyte=%ld\n", nrnmpi_myid, nccnt, nccnt * sizeof(NetCon*));
-#endif
+//#endif
     nbyte += nccnt * sizeof(NetCon*);
     nbyte += output_presyn_size();
     nbyte += input_presyn_size();
 
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("nrnran123 size=%ld cnt=%ld nbyte=%ld\n", nrnran123_state_size(),
            nrnran123_instance_count(), nrnran123_instance_count() * nrnran123_state_size());
-#endif
+//#endif
 
     nbyte += nrnran123_instance_count() * nrnran123_state_size();
 
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("%d total bytes %ld\n", nrnmpi_myid, nbyte);
-#endif
+//#endif
 
     return nbyte;
 }

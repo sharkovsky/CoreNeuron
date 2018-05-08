@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "coreneuron/nrnoc/nrnoc_decl.h"
 #include "coreneuron/nrniv/nrn_acc_manager.h"
 #include "coreneuron/coreneuron.h"
+#include "likwid.h"
 
 static void* nrn_fixed_step_thread(NrnThread*);
 static void* nrn_fixed_step_group_thread(NrnThread*);
@@ -88,8 +89,21 @@ void nrn_fixed_step_group_minimal(int n) {
     step_group_n = n;
     step_group_begin = 0;
     step_group_end = 0;
+    int i;
+    
     while (step_group_end < step_group_n) {
         nrn_multithread_job(nrn_fixed_step_group_thread);
+    /* comment out the above line for quick testing
+     * and increase time accordingly: */
+     /* quick testing */
+            /*
+        for(i=0; i< nrn_nthread; i++) {
+            nrn_threads[i]._t += dt*5;
+        }
+        step_group_end += 5;
+        */
+    /* end quick testing */
+
 #if NRNMPI
         nrn_spike_exchange(nrn_threads);
 #endif
@@ -178,7 +192,8 @@ void nonvint(NrnThread* _nt) {
     }
     errno = 0;
 
-    for (tml = _nt->tml; tml; tml = tml->next)
+    for (tml = _nt->tml; tml; tml = tml->next) {
+#pragma omp barrier
         if (memb_func[tml->index].state) {
             mod_f_t s = memb_func[tml->index].state;
             (*s)(_nt, tml->ml, tml->index);
@@ -188,6 +203,7 @@ void nonvint(NrnThread* _nt) {
             }
 #endif
         }
+    }
 }
 
 void nrn_ba(NrnThread* nt, int bat) {
@@ -204,6 +220,8 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
     /* check thresholds and deliver all (including binqueue)
        events up to t+dt/2 */
     extern int secondorder;
+    //printf("t: %f deliver_net_events\n", nth->_t);
+
     deliver_net_events(nth);
     nth->_t += .5 * nth->_dt;
 
@@ -248,6 +266,7 @@ void* nrn_fixed_step_lastpart(NrnThread* nth) {
         nrn_ba(nth, BEFORE_STEP);
     }
 
+    //printf("t: %f nrn_deliver_events\n", nth->_t);
     nrn_deliver_events(nth); /* up to but not past texit */
     return (void*)0;
 }

@@ -93,6 +93,7 @@ void nrn_finitialize(int setv, double v) {
     for (i = 0; i < nrn_nthread; ++i) {
         nrn_deliver_events(nrn_threads + i); /* The INITIAL sent events at t=0 */
     }
+    #pragma omp parallel for private(i) shared(nrn_threads, nrn_nthread) schedule(static, 1)
     for (i = 0; i < nrn_nthread; ++i) {
         setup_tree_matrix_minimal(nrn_threads + i);
     }

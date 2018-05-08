@@ -71,7 +71,7 @@ BinQ::BinQ() {
 
 BinQ::~BinQ() {
     for (int i = 0; i < nbin_; ++i) {
-        assert(!bins_[i]);
+        //assert(!bins_[i]);
     }
     delete[] bins_;
     vec_bins.clear();
@@ -81,7 +81,7 @@ void BinQ::resize(int size) {
     // printf("BinQ::resize from %d to %d\n", nbin_, size);
     int i, j;
     TQItem* q;
-    assert(size >= nbin_);
+    //assert(size >= nbin_);
     TQItem** bins = new TQItem*[size];
     for (i = nbin_; i < size; ++i) {
         bins[i] = 0;
@@ -102,7 +102,7 @@ void BinQ::resize(int size) {
 }
 void BinQ::enqueue(double td, TQItem* q) {
     int idt = (int)((td - tt_) * rev_dt + 1.e-10);
-    assert(idt >= 0);
+    //1assert(idt >= 0);
     if (idt >= nbin_) {
         resize(idt + 1000);
     }
@@ -112,7 +112,7 @@ void BinQ::enqueue(double td, TQItem* q) {
         idt -= nbin_;
     }
     // printf("enqueue: idt=%d qpt=%d nbin_=%d\n", idt, qpt_, nbin_);
-    assert(idt < nbin_);
+    //assert(idt < nbin_);
     q->cnt_ = idt;  // only for iteration
     q->left_ = bins_[idt];
     bins_[idt] = q;

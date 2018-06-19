@@ -477,7 +477,7 @@ static void _net_buf_receive(_NrnThread* _nt) {
   Point_process* _pnt = _nt->pntprocs;
   int _pnt_length = _nt->n_pntproc - _nrb->_pnt_offset;
   int _displ_cnt = _nrb->_displ_cnt;
-  printf("calling _net_buf_receive for %d counts\n", _displ_cnt);
+//  printf("calling _net_buf_receive for %d counts\n", _displ_cnt);
   _PRAGMA_FOR_NETRECV_ACC_LOOP_ 
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_net_recv");
@@ -493,7 +493,7 @@ LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_net_recv");
       double _nrt = _nrb->_nrb_t[_i];
       double _nrflag = _nrb->_nrb_flag[_i];
       _net_receive_kernel(_nrt, _pnt + _j, _k, _nrflag);
-      printf("calling _net_receive_kernel for time %f\n", _nrt);
+//      printf("calling _net_receive_kernel for time %f\n", _nrt);
     }
   }
 #ifndef DISABLE_LIKWID_ON_SYN

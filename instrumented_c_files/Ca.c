@@ -452,11 +452,12 @@ for (;;) { /* help clang-format properly indent */
  _PRCELLSTATE_G
 	_vec_rhs[_nd_idx] -= _rhs;
 	_vec_d[_nd_idx] += _g;
+ 
+}
+
 #ifndef DISABLE_LIKWID_ON_MECH
 LIKWID_MARKER_STOP("Ca_current");
 #endif
- 
-}
  
 }
 

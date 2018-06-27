@@ -68,7 +68,7 @@ void nrn_fixed_step_minimal() { /* not so minimal anymore with gap junctions */
     }
 #if NRNMPI
     if (nrn_threads[0]._stop_stepping) {
-        printf("\nCalling spike exchange t %f from nrn_fixed_step_minimal\n", nrn_threads[0]._t);
+        //printf("\nCalling spike exchange t %f from nrn_fixed_step_minimal\n", nrn_threads[0]._t);
         nrn_spike_exchange(nrn_threads);
     }
 #endif
@@ -92,7 +92,7 @@ void nrn_fixed_step_group_minimal(int n) {
     while (step_group_end < step_group_n) {
         nrn_multithread_job(nrn_fixed_step_group_thread);
 #if NRNMPI
-        printf("\nCalling spike exchange t %f from nrn_fixed_step_group_minimal\n", nrn_threads[0]._t);
+        //printf("\nCalling spike exchange t %f from nrn_fixed_step_group_minimal\n", nrn_threads[0]._t);
         nrn_spike_exchange(nrn_threads);
 #endif
 

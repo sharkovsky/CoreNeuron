@@ -121,20 +121,115 @@ int nrnmpi_spike_exchange() {
 #endif
     }
 #if nrn_spikebuf_size == 0
+
+    double starttime, endtime, tot_time;
+    double avg_time, min_time, max_time;
+    int gatherv_iter;
+
     MPI_Allgather(&nout_, 1, MPI_INT, nin_, 1, MPI_INT, nrnmpi_comm);
+    MPI_Barrier( nrnmpi_comm );
+    starttime = MPI_Wtime();
+    MPI_Allgather(&nout_, 1, MPI_INT, nin_, 1, MPI_INT, nrnmpi_comm);
+    MPI_Barrier( nrnmpi_comm );
+    endtime = MPI_Wtime();
+
+    if ( nrnmpi_myid == 0 ) {
+        fprintf( allgatherv_times_fp, "%03d\t%20.10f\t%20.10f\t%20.10f \n", -1, endtime - starttime, 0., 0. );
+    }
+
     n = nin_[0];
     for (i = 1; i < np; ++i) {
         displs[i] = n;
         n += nin_[i];
     }
+
+    /* OVERRIDE EVERYTHING
+     * each rank sends 5 more spikes than last time */
+
+    n = NSPIKES_FROM_EACH_RANK;
+    nout_ = NSPIKES_FROM_EACH_RANK;
+    displs[0] = 0;
+    nin_[0] = NSPIKES_FROM_EACH_RANK;
+    for (i = 1; i < np; ++i) {
+        nin_[i] = NSPIKES_FROM_EACH_RANK;
+        displs[i] = n;
+        n += nin_[i];
+    }
+    for( i=0; i < NSPIKES_FROM_EACH_RANK; ++i) {
+        spikeout_[i].gid = 1;
+        spikeout_[i].spiketime = 100.;
+    }
+    NSPIKES_FROM_EACH_RANK += 5;
+
+    MPI_Barrier( nrnmpi_comm );
+
+    /* END OVERRIDE */
+
     if (n) {
         if (icapacity_ < n) {
             icapacity_ = n + 10;
             free(spikein_);
             spikein_ = (NRNMPI_Spike*)emalloc(icapacity_ * sizeof(NRNMPI_Spike));
         }
+
+        /*
+        NRNMPI_Spike* spikeout_dummy;
+        spikeout_dummy = (NRNMPI_Spike*)emalloc(nout_*sizeof(NRNMPI_Spike));
+        for (i=nout_-1; i>=0; --i){
+            spikeout_dummy[i] = spikeout_[i];
+        }
+
+        NRNMPI_Spike* spikein_dummy;
+        spikein_dummy = (NRNMPI_Spike*)emalloc(n * sizeof(NRNMPI_Spike));
+        for (i=n-1; i>=0; --i){
+            spikein_dummy[i] = spikein_[i];
+        }
+
+        // make one dummy initialization call
         MPI_Allgatherv(spikeout_, nout_, spike_type, spikein_, nin_, displs, spike_type,
                        nrnmpi_comm);
+       */
+
+
+        int stats_it;
+        int NUM_STATS_IT = 30;
+        double timer = 0.;
+        double latency;
+        for(stats_it = 0; stats_it < NUM_STATS_IT; ++stats_it) {
+
+            starttime = MPI_Wtime();
+
+            MPI_Allgatherv(spikeout_, nout_, spike_type, spikein_, nin_, displs, spike_type,
+                           nrnmpi_comm);
+
+            endtime = MPI_Wtime();
+
+            timer += endtime - starttime;
+            MPI_Barrier( nrnmpi_comm );
+
+        }
+
+        MPI_Barrier( nrnmpi_comm );
+
+        latency = (double)(timer * 1e6) / NUM_STATS_IT;
+
+        double min_time, max_time, avg_time;
+
+        MPI_Reduce(&latency, &min_time, 1, MPI_DOUBLE, MPI_MIN, 0,
+                                    MPI_COMM_WORLD);
+        MPI_Reduce(&latency, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0,
+                                    MPI_COMM_WORLD);
+        MPI_Reduce(&latency, &avg_time, 1, MPI_DOUBLE, MPI_SUM, 0,
+                                    MPI_COMM_WORLD);
+        avg_time = avg_time/nrnmpi_numprocs;
+
+        if ( nrnmpi_myid == 0 ) {
+            fprintf( allgatherv_times_fp, "%07d\t%20.15f\t%20.15f\t%20.15f\n", n, avg_time, min_time, max_time);
+        }
+    } else {
+        if ( nrnmpi_myid == 0 ) {
+            fprintf( allgatherv_times_fp, "%03d\t%20.10f\t%20.15f\t%20.15f\n", n, 0., 0., 0.);
+        }
     }
 #else
     MPI_Allgather(spbufout_, 1, spikebuf_type, spbufin_, 1, spikebuf_type, nrnmpi_comm);

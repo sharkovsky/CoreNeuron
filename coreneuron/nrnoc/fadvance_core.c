@@ -68,6 +68,7 @@ void nrn_fixed_step_minimal() { /* not so minimal anymore with gap junctions */
     }
 #if NRNMPI
     if (nrn_threads[0]._stop_stepping) {
+        printf("\nCalling spike exchange t %f from nrn_fixed_step_minimal\n", nrn_threads[0]._t);
         nrn_spike_exchange(nrn_threads);
     }
 #endif
@@ -91,6 +92,7 @@ void nrn_fixed_step_group_minimal(int n) {
     while (step_group_end < step_group_n) {
         nrn_multithread_job(nrn_fixed_step_group_thread);
 #if NRNMPI
+        printf("\nCalling spike exchange t %f from nrn_fixed_step_group_minimal\n", nrn_threads[0]._t);
         nrn_spike_exchange(nrn_threads);
 #endif
 
@@ -106,7 +108,7 @@ void nrn_fixed_step_group_minimal(int n) {
         //@TODO: flush/optimize/better way
         if (nrnmpi_myid == 0) {
             float completed = (((float)step_group_end / step_group_n) * 100.0);
-            printf(" Completed %.2f, t = %lf\r", completed, nrn_threads[0]._t);
+//            printf(" Completed %.2f, t = %lf\r", completed, nrn_threads[0]._t);
             fflush(stdout);
         }
     }
@@ -118,13 +120,13 @@ static void* nrn_fixed_step_group_thread(NrnThread* nth) {
     nth->_stop_stepping = 0;
     for (i = step_group_begin; i < step_group_n; ++i) {
         nrn_fixed_step_thread(nth);
-        if (nth->_stop_stepping) {
+        //if (nth->_stop_stepping) {
             if (nth->id == 0) {
                 step_group_end = i + 1;
             }
             nth->_stop_stepping = 0;
             return (void*)0;
-        }
+        //}
     }
     if (nth->id == 0) {
         step_group_end = step_group_n;
@@ -204,7 +206,7 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
     /* check thresholds and deliver all (including binqueue)
        events up to t+dt/2 */
     extern int secondorder;
-    deliver_net_events(nth);
+    //deliver_net_events(nth);
     nth->_t += .5 * nth->_dt;
 
     if (nth->ncell) {
@@ -248,6 +250,6 @@ void* nrn_fixed_step_lastpart(NrnThread* nth) {
         nrn_ba(nth, BEFORE_STEP);
     }
 
-    nrn_deliver_events(nth); /* up to but not past texit */
+    //nrn_deliver_events(nth); /* up to but not past texit */
     return (void*)0;
 }

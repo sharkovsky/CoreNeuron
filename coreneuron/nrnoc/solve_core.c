@@ -63,6 +63,11 @@ static void triang(NrnThread* _nt) {
 #if defined(_OPENACC)
     int stream_id = _nt->stream_id;
 #endif
+//    printf( "parent_index\n");
+//    for (i = 0; i <= i3; ++i) {
+//        printf("%08d\n", parent_index[i]);
+//    }
+//    printf("-----");
 
 /** @todo: just for benchmarking, otherwise produces wrong results */
 #pragma omp barrier

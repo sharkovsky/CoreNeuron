@@ -173,6 +173,22 @@ int nrnmpi_spike_exchange() {
         }
 
         /*
+         * SEPARATE SENDING OF GIDS and TIMES
+         * Writing a new test to separate sending of gids and times,
+         * should make it much simpler to model and potentially
+         * much faster */
+
+        int * spikeout_gids = (int*)emalloc(NSPIKES_FROM_EACH_RANK*sizeof(int));
+        double * spikeout_times = (double*)emalloc(NSPIKES_FROM_EACH_RANK*sizeof(double));
+        for( i=0; i < NSPIKES_FROM_EACH_RANK; ++i) {
+            spikeout_gids[i] = spikeout_[i].gid;
+            spikeout_times[i] = spikeout_[i].spiketime;
+        }
+
+        int * spikein_gids = (int*)emalloc(icapacity_*sizeof(int));
+        double * spikein_times = (double*)emalloc(icapacity_*sizeof(double));
+
+        /*
         NRNMPI_Spike* spikeout_dummy;
         spikeout_dummy = (NRNMPI_Spike*)emalloc(nout_*sizeof(NRNMPI_Spike));
         for (i=nout_-1; i>=0; --i){
@@ -195,12 +211,17 @@ int nrnmpi_spike_exchange() {
         int NUM_STATS_IT = 30;
         double timer = 0.;
         double latency;
+        MPI_Barrier( nrnmpi_comm );
         for(stats_it = 0; stats_it < NUM_STATS_IT; ++stats_it) {
 
             starttime = MPI_Wtime();
 
-            MPI_Allgatherv(spikeout_, nout_, spike_type, spikein_, nin_, displs, spike_type,
-                           nrnmpi_comm);
+            //MPI_Allgatherv(spikeout_, nout_, spike_type, spikein_, nin_, displs, spike_type,
+            //               nrnmpi_comm);
+            MPI_Allgatherv(spikeout_gids, nout_, MPI_INT, spikein_gids,
+                    nin_, displs, MPI_INT, nrnmpi_comm);
+            MPI_Allgatherv(spikeout_times, nout_, MPI_DOUBLE, spikein_times,
+                    nin_, displs, MPI_DOUBLE, nrnmpi_comm);
 
             endtime = MPI_Wtime();
 

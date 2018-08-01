@@ -454,7 +454,7 @@ static void _net_buf_receive(_NrnThread* _nt) {
       int _k = _nrb->_weight_index[_i];
       double _nrt = _nrb->_nrb_t[_i];
       double _nrflag = _nrb->_nrb_flag[_i];
-//      printf("time %f net buf recv j %d\n");
+      //printf("time %f net buf recv j %d\n");
       _net_receive_kernel(_nrt, _pnt + _j, _k, _nrflag);
     }
   }

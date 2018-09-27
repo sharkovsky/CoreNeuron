@@ -837,6 +837,7 @@ _PRAGMA_FOR_CUR_SYN_ACC_LOOP_
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltGABAAB_EMS_current");
 #endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -852,12 +853,12 @@ for (;;) { /* help clang-format properly indent */
  i_GABAA = g_GABAA * ( _v - e_GABAA ) ;
  i_GABAB = g_GABAB * ( _v - e_GABAB ) ;
  idend = i_GABAA + i_GABAB ;
- if ( tau_corr < dt ) {
+// if ( tau_corr < dt ) {
    i = w_corr * idend ;
-   }
- else {
-   i = w_corr * isoma ;
-   }
+//   }
+// else {
+//   i = w_corr * isoma ;
+//   }
   _rhs = i;
   _g = g_GABAA + g_GABAB;
  }
@@ -896,6 +897,7 @@ LIKWID_MARKER_START("ProbFiltGABAAB_EMS_reduction_cur");
            _vec_d[_nd_idx] += _vec_shadow_d[_iml];
         }
 #else
+#pragma omp simd simdlen(2)
  for (_iml = 0; _iml < _cntml_actual; ++_iml) {
    int _nd_idx = _ni[_iml];
    _vec_rhs[_nd_idx] -= _vec_shadow_rhs[_iml];
@@ -938,6 +940,7 @@ _PRAGMA_FOR_STATE_ACC_LOOP_
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltGABAAB_EMS_state");
 #endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -948,7 +951,12 @@ for (;;) { /* help clang-format properly indent */
     _PRCELLSTATE_V
  v=_v;
 {
- {   state(_threadargs_);
+ {   //state(_threadargs_);
+    A_GABAA = A_GABAA + (1. - exp(dt*(( 1.0 ) / tau_r_GABAA)))*( - A_GABAA) ;
+    B_GABAA = B_GABAA + (1. - exp(dt*(( 1.0 ) / tau_d_GABAA)))*( - B_GABAA) ;
+    A_GABAB = A_GABAB + (1. - exp(dt*(( 1.0 ) / tau_r_GABAB)))*( - A_GABAB) ;
+    B_GABAB = B_GABAB + (1. - exp(dt*(( 1.0 ) / tau_d_GABAB)))*( - B_GABAB) ;
+    isoma = isoma + (1. - exp(dt*(( ( 1.0 ) ) / tau_corr)))*(- ( idend + ( ( ( - idend ) ) ) / tau_corr ) / ( ( ( 1.0 ) ) / tau_corr ) - isoma) ;
   }}}
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("ProbFiltGABAAB_EMS_state");

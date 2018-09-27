@@ -717,9 +717,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("neuron_update");
-#endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -747,9 +746,7 @@ for (;;) { /* help clang-format properly indent */
     }
   }}}
 
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("neuron_update");
-#endif
 
 #if LAYOUT == 1 /*AoS*/
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
@@ -759,9 +756,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("PSC_contributions");
-#endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -779,9 +775,7 @@ for (;;) { /* help clang-format properly indent */
     weighted_spikes_in_ = 0. ;
   }}}
 
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("PSC_contributions");
-#endif
 
 }
 

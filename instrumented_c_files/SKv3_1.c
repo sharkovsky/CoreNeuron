@@ -409,6 +409,7 @@ LIKWID_MARKER_START("SKv3_1_current");
 #endif
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_CUR_ACC_LOOP_
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -465,6 +466,7 @@ LIKWID_MARKER_START("SKv3_1_state");
 #endif
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -477,6 +479,9 @@ for (;;) { /* help clang-format properly indent */
 {
   ek = _ion_ek;
  {   states(_threadargs_);
+    mInf = 1.0 / ( 1.0 + exp ( ( ( v - ( 18.700 ) ) / ( - 9.700 ) ) ) ) ;
+   mTau = 0.2 * 20.000 / ( 1.0 + exp ( ( ( v - ( - 46.560 ) ) / ( - 44.140 ) ) ) ) ;
+    m = m + (1. - exp(dt*(( ( ( - 1.0 ) ) ) / mTau)))*(- ( ( ( mInf ) ) / mTau ) / ( ( ( ( - 1.0) ) ) / mTau ) - m) ;
   } }}
 
 #ifndef DISABLE_LIKWID_ON_MECH

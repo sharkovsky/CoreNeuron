@@ -5,8 +5,9 @@
 #include <math.h>
 #include "coreneuron/mech/cfile/scoplib.h"
 #undef PI
- 
-#include "likwid.h"
+#ifdef LIKWID_PERFMON
+    #include "likwid.h"
+#endif
 
 #include "coreneuron/nrnoc/md1redef.h"
 #include "coreneuron/nrnconf.h"
@@ -139,18 +140,18 @@ static void _net_buf_receive(_NrnThread*);
 #define i_eta _p[19*_STRIDE]
 #define p_dontspike _p[20*_STRIDE]
 #define rand _p[21*_STRIDE]
-#define gamma_sum _p[22*_STRIDE]
-#define verboseLevel _p[23*_STRIDE]
-#define isrefrac _p[24*_STRIDE]
-#define eta1 _p[25*_STRIDE]
-#define eta2 _p[26*_STRIDE]
-#define eta3 _p[27*_STRIDE]
-#define gamma1 _p[28*_STRIDE]
-#define gamma2 _p[29*_STRIDE]
-#define gamma3 _p[30*_STRIDE]
-#define lambda _p[31*_STRIDE]
-#define irefrac _p[32*_STRIDE]
-#define grefrac _p[33*_STRIDE]
+#define grefrac _p[22*_STRIDE]
+#define gamma_sum _p[23*_STRIDE]
+#define verboseLevel _p[24*_STRIDE]
+#define isrefrac _p[25*_STRIDE]
+#define eta1 _p[26*_STRIDE]
+#define eta2 _p[27*_STRIDE]
+#define eta3 _p[28*_STRIDE]
+#define gamma1 _p[29*_STRIDE]
+#define gamma2 _p[30*_STRIDE]
+#define gamma3 _p[31*_STRIDE]
+#define lambda _p[32*_STRIDE]
+#define irefrac _p[33*_STRIDE]
 #define Deta1 _p[34*_STRIDE]
 #define Deta2 _p[35*_STRIDE]
 #define Deta3 _p[36*_STRIDE]
@@ -287,6 +288,7 @@ static void _acc_globals_update() {
  "i_eta", "nA",
  "p_dontspike", "1",
  "rand", "1",
+ "grefrac", "uS",
  "gamma_sum", "mV",
  "verboseLevel", "1",
  "isrefrac", "1",
@@ -362,6 +364,7 @@ void nrn_state(_NrnThread*, _Memb_list*, int);
  "i_eta",
  "p_dontspike",
  "rand",
+ "grefrac",
  "gamma_sum",
  "verboseLevel",
  "isrefrac",
@@ -557,9 +560,6 @@ static void _net_buf_receive(_NrnThread* _nt) {
   int _pnt_length = _nt->n_pntproc - _nrb->_pnt_offset;
   int _displ_cnt = _nrb->_displ_cnt;
   _PRAGMA_FOR_NETRECV_ACC_LOOP_ 
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_START("GIF_net_receive");
-#endif
   for (_di = 0; _di < _displ_cnt; ++_di) {
     int _inrb;
     int _di0 = _nrb->_displ[_di];
@@ -573,9 +573,6 @@ static void _net_buf_receive(_NrnThread* _nt) {
       _net_receive_kernel(_nrt, _pnt + _j, _k, _nrflag);
     }
   }
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_STOP("GIF_net_receive");
-#endif
   #pragma acc wait(stream_id)
   _nrb->_displ_cnt = 0;
   _nrb->_cnt = 0;
@@ -991,24 +988,6 @@ for (;;) { /* help clang-format properly indent */
 #endif
 }
 
-static double _nrn_current(_threadargsproto_, double _v){double _current=0.;v=_v;{ {
-   i_eta = eta1 + eta2 + eta3 ;
-   gamma_sum = gamma1 + gamma2 + gamma3 ;
-   lambda = lambda0 * exp ( ( v - Vt_star - gamma_sum ) / DV ) ;
-   if ( isrefrac > 0.0 ) {
-     p_dontspike = 2.0 ;
-     }
-   else {
-     p_dontspike = exp ( - lambda * ( dt * ( 1e-3 ) ) ) ;
-     }
-   irefrac = grefrac * ( v - 0.0 ) ;
-   i = irefrac + i_eta ;
-   }
- _current += i;
-
-} return _current;
-}
-
 #if defined(ENABLE_CUDA_INTERFACE) && defined(_OPENACC)
   void nrn_state_launcher(_NrnThread*, _Memb_list*, int, int);
   void nrn_jacob_launcher(_NrnThread*, _Memb_list*, int, int);
@@ -1046,9 +1025,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_CUR_SYN_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_START("GIF_current");
-#endif
+LIKWID_MARKER_START("GIF_current");
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -1057,10 +1035,21 @@ for (;;) { /* help clang-format properly indent */
     int _nd_idx = _ni[_iml];
     _v = _vec_v[_nd_idx];
     _PRCELLSTATE_V
- _g = _nrn_current(_threadargs_, _v + .001);
- 	{ _rhs = _nrn_current(_threadargs_, _v);
- 	}
- _g = (_g - _rhs)/.001;
+ {
+ i_eta = eta1 + eta2 + eta3 ;
+ gamma_sum = gamma1 + gamma2 + gamma3 ;
+ lambda = lambda0 * exp ( ( _v - Vt_star - gamma_sum ) / DV ) ;
+ if ( isrefrac > 0.0 ) {
+   p_dontspike = 2.0 ;
+   }
+ else {
+   p_dontspike = exp ( - lambda * ( dt * ( 1e-3 ) ) ) ;
+   }
+ irefrac = grefrac * ( _v - 0.0 ) ;
+ i = irefrac + i_eta ;
+  _rhs = i;
+  _g = grefrac;
+ }
  double _mfact =  1.e2/(_nd_area);
  _g *=  _mfact;
  _rhs *= _mfact;
@@ -1082,12 +1071,8 @@ for (;;) { /* help clang-format properly indent */
   _vec_shadow_d[_iml] = _g;
 #endif
  }
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_STOP("GIF_current");
-#endif
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_START("GIF_reduction_cur");
-#endif
+LIKWID_MARKER_STOP("GIF_current");
+LIKWID_MARKER_START("GIF_reduction_cur");
 #ifdef _OPENACC
     if(!(_nt->compute_gpu)) { 
         for (_iml = 0; _iml < _cntml_actual; ++_iml) {
@@ -1103,10 +1088,8 @@ for (;;) { /* help clang-format properly indent */
 #endif
  
 }
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_STOP("GIF_reduction_cur");
-#endif
  
+LIKWID_MARKER_STOP("GIF_reduction_cur");
 }
 
 void nrn_state(_NrnThread* _nt, _Memb_list* _ml, int _type) {
@@ -1135,9 +1118,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_START("GIF_state");
-#endif
+LIKWID_MARKER_START("GIF_state");
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -1146,19 +1128,18 @@ for (;;) { /* help clang-format properly indent */
     int _nd_idx = _ni[_iml];
     _v = _vec_v[_nd_idx];
     _PRCELLSTATE_V
-    v=_v;
-    //states(_threadargs_);
+ v=_v;
+{
+ {   ///states(_threadargs_);
     eta1 = eta1 + (1. - exp(dt*(( - 1.0 ) / tau_eta1)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_eta1 ) - eta1) ;
     eta2 = eta2 + (1. - exp(dt*(( - 1.0 ) / tau_eta2)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_eta2 ) - eta2) ;
     eta3 = eta3 + (1. - exp(dt*(( - 1.0 ) / tau_eta3)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_eta3 ) - eta3) ;
     gamma1 = gamma1 + (1. - exp(dt*(( - 1.0 ) / tau_gamma1)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_gamma1 ) - gamma1) ;
     gamma2 = gamma2 + (1. - exp(dt*(( - 1.0 ) / tau_gamma2)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_gamma2 ) - gamma2) ;
     gamma3 = gamma3 + (1. - exp(dt*(( - 1.0 ) / tau_gamma3)))*(- ( 0.0 ) / ( ( - 1.0 ) / tau_gamma3 ) - gamma3) ;
-  }
+  }}}
 
-#ifndef DISABLE_LIKWID_ON_MECH
-  LIKWID_MARKER_STOP("GIF_state");
-#endif
+LIKWID_MARKER_STOP("GIF_state");
 }
 
 static void terminal(){}
@@ -1188,4 +1169,3 @@ _first = 0;
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif
- 

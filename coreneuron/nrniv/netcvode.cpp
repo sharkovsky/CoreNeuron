@@ -937,11 +937,13 @@ tryagain:
             delete q;
             //db->deliver(nt->_t, this, nt);
         }
+
 # pragma omp barrier
         if ( BinQueueEvents.size() > 0 ) {
             int event_idx;
             LIKWID_MARKER_START("binq_delivery");
             for( event_idx = 0; event_idx < BinQueueEvents.size(); ++event_idx ) {
+//                BinQueueEvents[ event_idx ]->pr("binq deliver", nrn_threads->_t, this);
                 BinQueueEvents[ event_idx ]->deliver(nt->_t, this, nt);
             }
             LIKWID_MARKER_STOP("binq_delivery");

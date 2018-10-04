@@ -438,6 +438,7 @@ LIKWID_MARKER_START("NaTs2_t_current");
 #endif
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_CUR_ACC_LOOP_
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -494,6 +495,7 @@ LIKWID_MARKER_START("NaTs2_t_state");
 #endif
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -505,7 +507,26 @@ for (;;) { /* help clang-format properly indent */
  v=_v;
 {
   ena = _ion_ena;
- {   states(_threadargs_);
+ {   //states(_threadargs_);
+   double _lqt ;
+ _lqt = pow( 2.3 , ( ( 34.0 - 21.0 ) / 10.0 ) ) ;
+    if ( v  == - 32.0 ) {
+     v = v + 0.0001 ;
+     }
+   mAlpha = ( 0.182 * ( v - - 32.0 ) ) / ( 1.0 - ( exp ( - ( v - - 32.0 ) / 6.0 ) ) ) ;
+   mBeta = ( 0.124 * ( - v - 32.0 ) ) / ( 1.0 - ( exp ( - ( - v - 32.0 ) / 6.0 ) ) ) ;
+   mInf = mAlpha / ( mAlpha + mBeta ) ;
+   mTau = ( 1.0 / ( mAlpha + mBeta ) ) / _lqt ;
+   if ( v  == - 60.0 ) {
+     v = v + 0.0001 ;
+     }
+   hAlpha = ( - 0.015 * ( v - - 60.0 ) ) / ( 1.0 - ( exp ( ( v - - 60.0 ) / 6.0 ) ) ) ;
+   hBeta = ( - 0.015 * ( - v - 60.0 ) ) / ( 1.0 - ( exp ( ( - v - 60.0 ) / 6.0 ) ) ) ;
+   hInf = hAlpha / ( hAlpha + hBeta ) ;
+   hTau = ( 1.0 / ( hAlpha + hBeta ) ) / _lqt ;
+
+    m = m + (1. - exp(dt*(( ( ( - 1.0 ) ) ) / mTau)))*(- ( ( ( mInf ) ) / mTau ) / ( ( ( ( - 1.0) ) ) / mTau ) - m) ;
+    h = h + (1. - exp(dt*(( ( ( - 1.0 ) ) ) / hTau)))*(- ( ( ( hInf ) ) / hTau ) / ( ( ( ( - 1.0) ) ) / hTau ) - h) ;
   } }}
 
 #ifndef DISABLE_LIKWID_ON_MECH

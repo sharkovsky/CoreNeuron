@@ -477,7 +477,7 @@ static void _net_buf_receive(_NrnThread* _nt) {
   Point_process* _pnt = _nt->pntprocs;
   int _pnt_length = _nt->n_pntproc - _nrb->_pnt_offset;
   int _displ_cnt = _nrb->_displ_cnt;
-  printf("calling _net_buf_receive for %d counts\n", _displ_cnt);
+//  printf("calling _net_buf_receive for %d counts\n", _displ_cnt);
   _PRAGMA_FOR_NETRECV_ACC_LOOP_ 
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_net_recv");
@@ -493,7 +493,7 @@ LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_net_recv");
       double _nrt = _nrb->_nrb_t[_i];
       double _nrflag = _nrb->_nrb_flag[_i];
       _net_receive_kernel(_nrt, _pnt + _j, _k, _nrflag);
-      printf("calling _net_receive_kernel for time %f\n", _nrt);
+//      printf("calling _net_receive_kernel for time %f\n", _nrt);
     }
   }
 #ifndef DISABLE_LIKWID_ON_SYN
@@ -841,6 +841,7 @@ _PRAGMA_FOR_CUR_SYN_ACC_LOOP_
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_current");
 #endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -901,6 +902,7 @@ LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_reduction_cur");
            _vec_d[_nd_idx] += _vec_shadow_d[_iml];
         }
 #else
+#pragma omp simd simdlen(2)
  for (_iml = 0; _iml < _cntml_actual; ++_iml) {
    int _nd_idx = _ni[_iml];
    _vec_rhs[_nd_idx] -= _vec_shadow_rhs[_iml];
@@ -943,6 +945,7 @@ _PRAGMA_FOR_STATE_ACC_LOOP_
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("ProbFiltAMPANMDA_EMS_state");
 #endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -953,7 +956,12 @@ for (;;) { /* help clang-format properly indent */
     _PRCELLSTATE_V
  v=_v;
 {
- {   state(_threadargs_);
+ {   //state(_threadargs_);
+    A_AMPA = A_AMPA + (1. - exp(dt*(( 1.0 ) / tau_r_AMPA)))*( - A_AMPA) ;
+    B_AMPA = B_AMPA + (1. - exp(dt*(( 1.0 ) / tau_d_AMPA)))*( - B_AMPA) ;
+    A_NMDA = A_NMDA + (1. - exp(dt*(( 1.0 ) / tau_r_NMDA)))*( - A_NMDA) ;
+    B_NMDA = B_NMDA + (1. - exp(dt*(( 1.0 ) / tau_d_NMDA)))*( - B_NMDA) ;
+    isoma = isoma + (1. - exp(dt*(( ( 1.0 ) ) / tau_corr)))*(- ( idend + ( ( ( - idend ) ) ) / tau_corr ) / ( ( ( 1.0 ) ) / tau_corr ) - isoma) ;
   }}}
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("ProbFiltAMPANMDA_EMS_state");

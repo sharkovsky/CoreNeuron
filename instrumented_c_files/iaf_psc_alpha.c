@@ -470,29 +470,29 @@ static void _net_receive (Point_process* _pnt, int _weight_index, double _lflag)
    double *_weights = _nt->_weights;
    _args = _weights + _weight_index;
    _ml = _nt->_ml_list[_pnt->_type];
-   _cntml_actual = _ml->_nodecount;
+//   _cntml_actual = _ml->_nodecount;
    _cntml_padded = _ml->_nodecount_padded;
    _iml = _pnt->_i_instance;
 #if LAYOUT == 1 /*AoS*/
    _p = _ml->_data + _iml*_psize; _ppvar = _ml->_pdata + _iml*_ppsize;
 #endif
 #if LAYOUT == 0 /*SoA*/
-   _p = _ml->_data; _ppvar = _ml->_pdata;
+   _p = _ml->_data; //_ppvar = _ml->_pdata;
 #endif
 #if LAYOUT > 1 /*AoSoA*/
 #error AoSoA not implemented.
 #endif
   #if !defined(_OPENACC) 
- assert(_tsav <= t); 
+// assert(_tsav <= t); 
  #endif 
- _tsav = t; {
-   if ( _args[0] > 0. ) {
+// _tsav = t; {
+//   if ( _args[0] > 0. ) {
      weighted_spikes_ex_ = weighted_spikes_ex_ + _args[0] ;
-     }
-   else {
-     weighted_spikes_in_ = weighted_spikes_in_ + _args[0] ;
-     }
-   } 
+//     }
+//   else {
+//     weighted_spikes_in_ = weighted_spikes_in_ + _args[0] ;
+//     }
+//   } 
 #if NET_RECEIVE_BUFFERING
 #undef t
 #define t _nt->_t
@@ -717,9 +717,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("neuron_update");
-#endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -747,9 +746,7 @@ for (;;) { /* help clang-format properly indent */
     }
   }}}
 
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("neuron_update");
-#endif
 
 #if LAYOUT == 1 /*AoS*/
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
@@ -759,9 +756,8 @@ for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 /* insert compiler dependent ivdep like pragma */
 _PRAGMA_FOR_VECTOR_LOOP_
 _PRAGMA_FOR_STATE_ACC_LOOP_
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("PSC_contributions");
-#endif
+#pragma omp simd simdlen(2)
 for (_iml = 0; _iml < _cntml_actual; ++_iml) {
 #else /* LAYOUT > 1 */ /*AoSoA*/
 #error AoSoA not implemented.
@@ -779,9 +775,7 @@ for (;;) { /* help clang-format properly indent */
     weighted_spikes_in_ = 0. ;
   }}}
 
-#ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("PSC_contributions");
-#endif
 
 }
 

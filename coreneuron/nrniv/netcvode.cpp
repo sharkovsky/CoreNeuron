@@ -918,9 +918,9 @@ tryagain:
     // but I do not want to affect the case of not using a bin queue.
 
     if (nrn_use_bin_queue_) {
-        std::vector< DiscreteEvent* > BinQueueEvents;
+        std::vector< NetCon* > BinQueueEvents;
         while ((q = p[tid].tqe_->dequeue_bin()) != 0) {
-            DiscreteEvent* db = (DiscreteEvent*)q->data_;
+            NetCon* db = (NetCon*)q->data_;
             BinQueueEvents.push_back( db );
 
 #if PRINT_EVENT
@@ -944,7 +944,13 @@ tryagain:
             LIKWID_MARKER_START("binq_delivery");
             for( event_idx = 0; event_idx < BinQueueEvents.size(); ++event_idx ) {
 //                BinQueueEvents[ event_idx ]->pr("binq deliver", nrn_threads->_t, this);
-                BinQueueEvents[ event_idx ]->deliver(nt->_t, this, nt);
+//
+                /*BinQueueEvents[ event_idx ]->deliver(nt->_t, this, nt);*/
+
+                (*pnt_receive[ BinQueueEvents[ event_idx ]->target_->_type ])(
+                        BinQueueEvents[ event_idx ]->target_,
+                        BinQueueEvents[ event_idx ]->u.weight_index_, 0);
+
             }
             LIKWID_MARKER_STOP("binq_delivery");
         }

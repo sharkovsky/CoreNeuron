@@ -443,12 +443,10 @@ static void _net_buf_receive(_NrnThread* _nt) {
   Point_process* _pnt = _nt->pntprocs;
   int _pnt_length = _nt->n_pntproc - _nrb->_pnt_offset;
   int _displ_cnt = _nrb->_displ_cnt;
-//  printf("Hello! %d\n", _displ_cnt);
-  if ( _displ_cnt > 0 ) {
+#pragma omp barrier
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_START("DetAMPANMDA_EMS_net_receive");
 #endif
-#pragma omp barrier
   _PRAGMA_FOR_NETRECV_ACC_LOOP_ 
   for (_di = 0; _di < _displ_cnt; ++_di) {
     int _inrb;
@@ -467,7 +465,7 @@ LIKWID_MARKER_START("DetAMPANMDA_EMS_net_receive");
 #ifndef DISABLE_LIKWID_ON_SYN
 LIKWID_MARKER_STOP("DetAMPANMDA_EMS_net_receive");
 #endif
-  }
+
   #pragma acc wait(stream_id)
   _nrb->_displ_cnt = 0;
   _nrb->_cnt = 0;

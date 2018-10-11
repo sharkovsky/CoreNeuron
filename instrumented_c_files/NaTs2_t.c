@@ -506,7 +506,6 @@ for (;;) { /* help clang-format properly indent */
     _PRCELLSTATE_V
  v=_v;
 {
-  ena = _ion_ena;
  {   //states(_threadargs_);
    double _lqt ;
  _lqt = pow( 2.3 , ( ( 34.0 - 21.0 ) / 10.0 ) ) ;

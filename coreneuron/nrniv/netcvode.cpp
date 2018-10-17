@@ -918,6 +918,9 @@ tryagain:
     // but I do not want to affect the case of not using a bin queue.
 
     if (nrn_use_bin_queue_) {
+#ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_START("binq_operations");
+#endif
         std::vector< DiscreteEvent* > BinQueueEvents;
         while ((q = p[tid].tqe_->dequeue_bin()) != 0) {
             DiscreteEvent* db = (DiscreteEvent*)q->data_;
@@ -937,6 +940,10 @@ tryagain:
             delete q;
             //db->deliver(nt->_t, this, nt);
         }
+#ifndef DISABLE_LIKWID_ON_SPIKES
+        LIKWID_MARKER_STOP("binq_operations");
+#endif
+
 # pragma omp barrier
         if ( BinQueueEvents.size() > 0 ) {
             int event_idx;

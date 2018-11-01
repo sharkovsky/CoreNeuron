@@ -222,13 +222,14 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
     extern int secondorder;
     //printf("t: %f deliver_net_events\n", nth->_t);
 
+/*
     deliver_net_events(nth);
     nth->_t += .5 * nth->_dt;
 
     if (nth->ncell) {
 #if defined(_OPENACC)
         int stream_id = nth->stream_id;
-/*@todo: do we need to update nth->_t on GPU: Yes (Michael, but can launch kernel) */
+//@todo: do we need to update nth->_t on GPU: Yes (Michael, but can launch kernel)
 // clang-format off
         #pragma acc update device(nth->_t) if (nth->compute_gpu) async(stream_id)
         #pragma acc wait(stream_id)
@@ -237,13 +238,16 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
 
         fixed_play_continuous(nth);
         setup_tree_matrix_minimal(nth);
+*/
         nrn_solve_minimal(nth);
+/*
         second_order_cur(nth, secondorder);
         update(nth);
     }
     if (!nrn_have_gaps) {
         nrn_fixed_step_lastpart(nth);
     }
+*/
     return (void*)0;
 }
 

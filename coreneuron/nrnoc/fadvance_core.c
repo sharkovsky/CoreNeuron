@@ -222,9 +222,9 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
     extern int secondorder;
     //printf("t: %f deliver_net_events\n", nth->_t);
 
+    nth->_t += .5 * nth->_dt;
 /*
     deliver_net_events(nth);
-    nth->_t += .5 * nth->_dt;
 
     if (nth->ncell) {
 #if defined(_OPENACC)
@@ -240,6 +240,7 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
         setup_tree_matrix_minimal(nth);
 */
         nrn_solve_minimal(nth);
+        nth->_t += .5 * nth->_dt;
 /*
         second_order_cur(nth, secondorder);
         update(nth);

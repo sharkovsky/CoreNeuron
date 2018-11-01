@@ -223,10 +223,11 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
     //printf("t: %f deliver_net_events\n", nth->_t);
 
     nth->_t += .5 * nth->_dt;
-/*
-    deliver_net_events(nth);
+//    deliver_net_events(nth);
+
 
     if (nth->ncell) {
+/*
 #if defined(_OPENACC)
         int stream_id = nth->stream_id;
 //@todo: do we need to update nth->_t on GPU: Yes (Michael, but can launch kernel)
@@ -239,16 +240,19 @@ static void* nrn_fixed_step_thread(NrnThread* nth) {
         fixed_play_continuous(nth);
         setup_tree_matrix_minimal(nth);
 */
+//        printf("nrn_fixed_step_thread t: %f\n", nth->_t);
         nrn_solve_minimal(nth);
-        nth->_t += .5 * nth->_dt;
-/*
+        /*
         second_order_cur(nth, secondorder);
         update(nth);
+*/
     }
+    nth->_t += .5 * nth->_dt;
+    /*
     if (!nrn_have_gaps) {
         nrn_fixed_step_lastpart(nth);
     }
-*/
+    */
     return (void*)0;
 }
 

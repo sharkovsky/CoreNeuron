@@ -1,4 +1,7 @@
-# CoreNEURON
+# Performance analysis and engineer fork of CoreNEURON
+
+This fork is intended for performance analysis only.
+
 > Optimised simulator engine for [NEURON](https://www.neuron.yale.edu/neuron/)
 
 CoreNEURON is a simplified engine for the [NEURON](https://www.neuron.yale.edu/neuron/) simulator optimised for both memory usage and computational speed. Its goal is to simulate massive cell networks with minimal memory footprint and optimal performance.
